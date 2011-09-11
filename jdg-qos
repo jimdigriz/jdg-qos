@@ -101,8 +101,10 @@ ipt_start () {
 }
 
 ipt_rules () {
-ipt -p icmp -j DSCP --set-dscp-class AF41
-ipt -j DSCP --set-dscp-class AF13
+ipt -p icmp --icmp-type echo-request -j DSCP --set-dscp-class AF42
+ipt -p icmp --icmp-type echo-reply   -j DSCP --set-dscp-class AF42
+ipt -p icmp                          -j DSCP --set-dscp-class AF43
+ipt                                  -j DSCP --set-dscp-class AF13
 return
 	# HTTP(S)
 	ipt -p tcp -m multiport --ports 80,443 \
@@ -131,9 +133,9 @@ return
 		-j DSCP --set-dscp-class AF42
 
 	# ICMP
-	ipt -p icmp                          -j DSCP --set-dscp-class AF43
 	ipt -p icmp --icmp-type echo-request -j DSCP --set-dscp-class AF42
 	ipt -p icmp --icmp-type echo-reply   -j DSCP --set-dscp-class AF42
+	ipt -p icmp                          -j DSCP --set-dscp-class AF43
 }
 
 qos_stop () {
