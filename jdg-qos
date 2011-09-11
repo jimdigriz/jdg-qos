@@ -195,15 +195,15 @@ qos_rules () {
 	done
 
 	if [ "$V4INT" ]; then
-		tc filter add dev ifb0   parent    1: protocol ip   tcindex mask 0xfc shift 2
+		tc filter add dev ifb0   parent    1: protocol ip   tcindex mask 0xfc shift 2 pass_on
 
-		tc filter add dev $IFACE parent    1: protocol ip   tcindex mask 0xfc shift 2
+		tc filter add dev $IFACE parent    1: protocol ip   tcindex mask 0xfc shift 2 pass_on
 		tc filter add dev $IFACE parent ffff: protocol ip   basic action mirred egress redirect dev ifb0
 	fi
 	if [ "$V6INT" ]; then
-		tc filter add dev ifb0   parent    1: protocol ipv6 tcindex mask 0xfc shift 2
+		tc filter add dev ifb0   parent    1: protocol ipv6 tcindex mask 0xfc shift 2 pass_on
 
-		tc filter add dev $IFACE parent    1: protocol ipv6 tcindex mask 0xfc shift 2
+		tc filter add dev $IFACE parent    1: protocol ipv6 tcindex mask 0xfc shift 2 pass_on
 		tc filter add dev $IFACE parent ffff: protocol ipv6 basic action mirred egress redirect dev ifb0
 	fi
 }
