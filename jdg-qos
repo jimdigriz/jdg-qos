@@ -155,20 +155,28 @@ qos_rules () {
 	[ $OVERHEAD -ne 0 ] && STAB="stab linklayer atm overhead $OVERHEAD mtu $MTU"
 
 	# egress
-	tc qdisc add dev $IFACE       root        handle   1: dsmark indices 16 set_tc_index
-	tc qdisc add dev $IFACE $STAB parent  1:0 handle  10: prio   bands 2 priomap 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
-	tc qdisc add dev $IFACE       parent 10:1 handle 100: tbf    rate ${UEF}kbit burst $((2*$MTU)) latency 50ms
-	tc qdisc add dev $IFACE       parent 10:2 handle 200: gred   setup DPs 12 default 11
+	tc qdisc add dev $IFACE       root        handle   1: dsmark \
+		indices 16 set_tc_index
+	tc qdisc add dev $IFACE $STAB parent  1:0 handle  10: prio \
+		bands 2 priomap 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+	tc qdisc add dev $IFACE       parent 10:1 handle 100: tbf \
+		rate ${UEF}kbit burst $((2*$MTU)) latency 50ms
+	tc qdisc add dev $IFACE       parent 10:2 handle 200: gred \
+		setup DPs 12 default 11
 
 	modprobe ifb numifbs=1
 	ip link set ifb0 up
 
 	# ingress
 	tc qdisc add dev $IFACE       ingress     handle ffff:
-	tc qdisc add dev ifb0         root        handle    1: dsmark indices 16 set_tc_index
-	tc qdisc add dev ifb0   $STAB parent  1:0 handle   10: prio   bands 2 priomap 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
-	tc qdisc add dev ifb0         parent 10:1 handle  100: tbf    rate ${DEF}kbit burst $((2*$MTU)) latency 50ms
-	tc qdisc add dev ifb0         parent 10:2 handle  200: gred   setup DPs 12 default 11
+	tc qdisc add dev ifb0         root        handle    1: dsmark \
+		indices 16 set_tc_index
+	tc qdisc add dev ifb0   $STAB parent  1:0 handle   10: prio \
+		bands 2 priomap 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+	tc qdisc add dev ifb0         parent 10:1 handle  100: tbf \
+		rate ${DEF}kbit burst $((2*$MTU)) latency 50ms
+	tc qdisc add dev ifb0         parent 10:2 handle  200: gred \
+		setup DPs 12 default 11
 
 	for ELEMENT in $TABLE; do
 		I=$(echo $ELEMENT | awk 'BEGIN { FS=":" } { \
@@ -185,31 +193,39 @@ qos_rules () {
 		BURST=$(((2*$MIN+$MAX)/(3*$A)))
 		LIMIT=$((4*$MAX))
 
-		tc qdisc change dev $IFACE parent 10:2 gred DP $(($I-1)) prio $(($I+7)) probability $P \
-				min $MIN max $MAX avpkt $A burst $BURST limit $LIMIT \
-				bandwidth ${URATE}kbit
+		tc qdisc change dev $IFACE parent 10:2 gred \
+			DP $(($I-1)) prio $(($I+7)) probability $P \
+			min $MIN max $MAX avpkt $A burst $BURST limit $LIMIT \
+			bandwidth ${URATE}kbit
 
 		MAX=$((($S*$L*$DRATE)/(8*10)))
 		MIN=$(($MAX/2))
 		BURST=$(((2*$MIN+$MAX)/(3*$A)))
 		LIMIT=$((4*$MAX))
 
-		tc qdisc change dev ifb0   parent 10:2 gred DP $(($I-1)) prio $(($I+7)) probability $P \
-				min $MIN max $MAX avpkt $A burst $BURST limit $LIMIT \
-				bandwidth ${DRATE}kbit
+		tc qdisc change dev ifb0   parent 10:2 gred \
+			DP $(($I-1)) prio $(($I+7)) probability $P \
+			min $MIN max $MAX avpkt $A burst $BURST limit $LIMIT \
+			bandwidth ${DRATE}kbit
 	done
 
 	if [ "$V4INT" ]; then
-		tc filter add dev ifb0   parent    1: protocol ip   tcindex mask 0xfc shift 2 pass_on
+		tc filter add dev ifb0   parent    1: protocol ip \
+			tcindex mask 0xfc shift 2 pass_on
 
-		tc filter add dev $IFACE parent    1: protocol ip   tcindex mask 0xfc shift 2 pass_on
-		tc filter add dev $IFACE parent ffff: protocol ip   basic action mirred egress redirect dev ifb0
+		tc filter add dev $IFACE parent    1: protocol ip \
+			tcindex mask 0xfc shift 2 pass_on
+		tc filter add dev $IFACE parent ffff: protocol ip \
+			basic action mirred egress redirect dev ifb0
 	fi
 	if [ "$V6INT" ]; then
-		tc filter add dev ifb0   parent    1: protocol ipv6 tcindex mask 0xfc shift 2 pass_on
+		tc filter add dev ifb0   parent    1: protocol ipv6 \
+			tcindex mask 0xfc shift 2 pass_on
 
-		tc filter add dev $IFACE parent    1: protocol ipv6 tcindex mask 0xfc shift 2 pass_on
-		tc filter add dev $IFACE parent ffff: protocol ipv6 basic action mirred egress redirect dev ifb0
+		tc filter add dev $IFACE parent    1: protocol ipv6 \
+			tcindex mask 0xfc shift 2 pass_on
+		tc filter add dev $IFACE parent ffff: protocol ipv6 \
+			basic action mirred egress redirect dev ifb0
 	fi
 }
 
