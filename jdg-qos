@@ -144,6 +144,8 @@ qos_stop () {
 
 	tc qdisc del dev ifb0	root	2> /dev/null || true
 	ip link set ifb0 down		2> /dev/null || true
+
+	modprobe -r ifb			2> /dev/null || true
 }
 
 qos_rules () {
@@ -157,7 +159,7 @@ qos_rules () {
 	tc qdisc add dev $IFACE       parent 10:1 handle 100: tbf    rate ${UEF}kbit burst $((2*$MTU)) latency 50ms
 	tc qdisc add dev $IFACE       parent 10:2 handle 200: gred   setup DPs 12 default 11
 
-	modprobe ifb
+	modprobe ifb numifbs=1
 	ip link set ifb0 up
 
 	# ingress
