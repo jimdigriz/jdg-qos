@@ -108,11 +108,11 @@ ipt                                  -j DSCP --set-dscp-class AF13
 return
 	# HTTP(S)
 	ipt -p tcp -m multiport --ports 80,443 \
-		-j DSCP --set-dscp-class AF12
-	ipt -p tcp -m multiport --ports 80,443 \
 		-m connbytes --connbytes 0:$((512*1024)) \
 			--connbytes-dir both --connbytes-mode bytes \
 		-j DSCP --set-dscp-class AF22
+	ipt -p tcp -m multiport --ports 80,443 \
+		-j DSCP --set-dscp-class AF12
 
 	# SSH (plus hook for Telnet which fortunately ToS marks it's packets)
 	ipt -p tcp -m multiport --ports 22,23 \
