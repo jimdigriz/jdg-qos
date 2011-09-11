@@ -111,29 +111,29 @@ ipt_rules () {
 		-m length --length 32:40 \
 		-j DSCP --set-dscp-class AF42
 
+	# DNS
+	ipt -p udp -m multiport --ports domain -j DSCP --set-dscp-class AF31
+	ipt -p tcp -m multiport --ports domain -j DSCP --set-dscp-class AF31
+
 	# HTTP(S)
-	ipt -p tcp -m multiport --ports 80,443 \
+	ipt -p tcp -m multiport --ports www,https \
 		-m connbytes --connbytes 0:$((512*1024)) \
 			--connbytes-dir both --connbytes-mode bytes \
 		-j DSCP --set-dscp-class AF22
-	ipt -p tcp -m multiport --ports 80,443 \
+	ipt -p tcp -m multiport --ports www,https \
 		-j DSCP --set-dscp-class AF12
 
-	# SSH (plus hook for Telnet which fortunately ToS marks it's packets)
-	ipt -p tcp -m multiport --ports 22,23 \
-		-m tos --tos Minimize-Delay \
-		-j DSCP --set-dscp-class AF32
-	ipt -p tcp -m multiport --ports 22 \
-		-m tos --tos Normal-Service \
-		-j DSCP --set-dscp-class AF22
-	ipt -p tcp -m multiport --ports 22 \
+	# SSH an Telnet
+	ipt -p tcp -m multiport --ports ssh \
 		-m tos --tos Maximize-Throughput \
-		-j DSCP --set-dscp-class AF12
+		-j DSCP --set-dscp-class AF22
+	ipt -p tcp -m multiport --ports ssh,telnet \
+		-j DSCP --set-dscp-class AF32
 
 	# ICMP
 	ipt -p icmp --icmp-type echo-request -j DSCP --set-dscp-class AF42
 	ipt -p icmp --icmp-type echo-reply   -j DSCP --set-dscp-class AF42
-	ipt -p icmp                          -j DSCP --set-dscp-class AF43
+	ipt -p icmp                          -j DSCP --set-dscp-class AF41
 }
 
 qos_stop () {
