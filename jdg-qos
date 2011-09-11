@@ -50,7 +50,7 @@ if [ -z "$V4INT" -a -z "$V6INT" ]; then
 	exit 1
 fi
 # preference for v4 as v6 might be a tunnel
-[ -n "$V4INT" ] && IFACE=$V4INT || IFACE=$V6INT
+[ "$V4INT" ] && IFACE=$V4INT || IFACE=$V6INT
 
 if [ "x$1" == "xstatus" ]; then
 	tc -s qdisc  show dev $IFACE
@@ -68,10 +68,10 @@ MTU=$(ip link show dev $IFACE | head -n1 | sed 's/^.* mtu \([^ ]\+\) .\+$/\1/')
 _ipt () {
 	local PARAMS
 
-	if [ -n "$V4INT" ]; then
+	if [ "$V4INT" ]; then
 		iptables  -t mangle $@
 	fi
-	if [ -n "$V6INT" ]; then
+	if [ "$V6INT" ]; then
 		PARAMS=$(echo $@ | sed 's/icmp/icmpv6/g')
 
 		ip6tables -t mangle $PARAMS
@@ -194,13 +194,13 @@ qos_rules () {
 				bandwidth ${DRATE}kbit
 	done
 
-	if [ -n "$V4INT" ]; then
+	if [ "$V4INT" ]; then
 		tc filter add dev ifb0   parent    1: protocol ip   tcindex mask 0xfc shift 2
 
 		tc filter add dev $IFACE parent    1: protocol ip   tcindex mask 0xfc shift 2
 		tc filter add dev $IFACE parent ffff: protocol ip   basic action mirred egress redirect dev ifb0
 	fi
-	if [ -n "$V6INT" ]; then
+	if [ "$V6INT" ]; then
 		tc filter add dev ifb0   parent    1: protocol ipv6 tcindex mask 0xfc shift 2
 
 		tc filter add dev $IFACE parent    1: protocol ipv6 tcindex mask 0xfc shift 2
