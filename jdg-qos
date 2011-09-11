@@ -106,6 +106,14 @@ ipt -p icmp --icmp-type echo-reply   -j DSCP --set-dscp-class AF42
 ipt -p icmp                          -j DSCP --set-dscp-class AF43
 ipt                                  -j DSCP --set-dscp-class AF13
 return
+
+	# TCP
+	ipt -p tcp ! --tcp-flags SYN,FIN,RST     NONE \
+		-j DSCP --set-dscp-class AF41
+	ipt -p tcp   --tcp-flags SYN,ACK,FIN,RST ACK \
+		-m length --length 32:40 \
+		-j DSCP --set-dscp-class AF42
+
 	# HTTP(S)
 	ipt -p tcp -m multiport --ports 80,443 \
 		-m connbytes --connbytes 0:$((512*1024)) \
@@ -124,13 +132,6 @@ return
 	ipt -p tcp -m multiport --ports 22 \
 		-m tos --tos Maximize-Throughput \
 		-j DSCP --set-dscp-class AF12
-
-	# TCP
-	ipt -p tcp ! --tcp-flags SYN,FIN,RST     NONE \
-		-j DSCP --set-dscp-class AF41
-	ipt -p tcp   --tcp-flags SYN,ACK,FIN,RST ACK \
-		-m length --length 32:40 \
-		-j DSCP --set-dscp-class AF42
 
 	# ICMP
 	ipt -p icmp --icmp-type echo-request -j DSCP --set-dscp-class AF42
