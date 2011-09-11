@@ -19,7 +19,7 @@ DRATE=$(awk '/Connection Rate/ { print $8 }' /proc/avalanche/avsar_modem_stats)
 URATE=$(awk '/Connection Rate/ { print $4 }' /proc/avalanche/avsar_modem_stats)
 
 # base latency to next hop on an idle link
-LAT=16
+LAT=20
 
 # EF rate in kbps
 DEF=64
@@ -33,16 +33,16 @@ OVERHEAD=32
 
 # AF share latency avpkt prob
 TABLE="\
-AF11:10:150:0000:1.00 \
+AF11:10:150:0000:0.01 \
 AF12:10:150:0000:0.02 \
 AF13:10:150:0000:0.04 \
-AF21:10:100:1000:1.00 \
+AF21:10:100:1000:0.01 \
 AF22:10:100:1000:0.02 \
 AF23:10:100:1000:0.04 \
-AF31:10:060:0500:1.00 \
+AF31:10:060:0500:0.01 \
 AF32:10:060:0500:0.02 \
 AF33:10:060:0500:0.04 \
-AF41:10:020:0100:1.00 \
+AF41:10:020:0100:0.01 \
 AF42:10:020:0100:0.02 \
 AF43:10:020:0100:0.04"
 
