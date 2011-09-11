@@ -104,13 +104,6 @@ ipt_start () {
 }
 
 ipt_rules () {
-	# TCP
-	ipt -p tcp ! --tcp-flags SYN,FIN,RST     NONE \
-		-j DSCP --set-dscp-class AF41
-	ipt -p tcp   --tcp-flags SYN,ACK,FIN,RST ACK \
-		-m length --length 32:40 \
-		-j DSCP --set-dscp-class AF42
-
 	# DNS
 	ipt -p udp -m multiport --ports domain -j DSCP --set-dscp-class AF31
 	ipt -p tcp -m multiport --ports domain -j DSCP --set-dscp-class AF31
@@ -134,6 +127,13 @@ ipt_rules () {
 	ipt -p icmp                          -j DSCP --set-dscp-class AF41
 	ipt -p icmp --icmp-type echo-request -j DSCP --set-dscp-class AF42
 	ipt -p icmp --icmp-type echo-reply   -j DSCP --set-dscp-class AF42
+
+	# TCP
+	ipt -p tcp ! --tcp-flags SYN,FIN,RST     NONE \
+		-j DSCP --set-dscp-class AF41
+	ipt -p tcp   --tcp-flags SYN,ACK,FIN,RST ACK \
+		-m length --length 32:40 \
+		-j DSCP --set-dscp-class AF42
 }
 
 qos_stop () {
