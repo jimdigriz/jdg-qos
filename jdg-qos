@@ -101,11 +101,11 @@ ipt_start () {
 }
 
 ipt_rules () {
-ipt -p icmp --icmp-type echo-request -j DSCP --set-dscp-class AF42
-ipt -p icmp --icmp-type echo-reply   -j DSCP --set-dscp-class AF42
-ipt -p icmp                          -j DSCP --set-dscp-class AF43
-ipt                                  -j DSCP --set-dscp-class AF13
-return
+	ipt -p icmp --icmp-type echo-request -j DSCP --set-dscp-class AF42
+	ipt -p icmp --icmp-type echo-reply   -j DSCP --set-dscp-class AF42
+	ipt -p icmp                          -j DSCP --set-dscp-class AF43
+	ipt                                  -j DSCP --set-dscp-class AF13
+	return
 
 	# TCP
 	ipt -p tcp ! --tcp-flags SYN,FIN,RST     NONE \
