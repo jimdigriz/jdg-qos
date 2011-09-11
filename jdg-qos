@@ -117,23 +117,23 @@ ipt_rules () {
 
 	# HTTP(S)
 	ipt -p tcp -m multiport --ports www,https \
+		-j DSCP --set-dscp-class AF12
+	ipt -p tcp -m multiport --ports www,https \
 		-m connbytes --connbytes 0:$((512*1024)) \
 			--connbytes-dir both --connbytes-mode bytes \
 		-j DSCP --set-dscp-class AF22
-	ipt -p tcp -m multiport --ports www,https \
-		-j DSCP --set-dscp-class AF12
 
 	# SSH an Telnet
+	ipt -p tcp -m multiport --ports ssh,telnet \
+		-j DSCP --set-dscp-class AF32
 	ipt -p tcp -m multiport --ports ssh \
 		-m tos --tos Maximize-Throughput \
 		-j DSCP --set-dscp-class AF22
-	ipt -p tcp -m multiport --ports ssh,telnet \
-		-j DSCP --set-dscp-class AF32
 
 	# ICMP
+	ipt -p icmp                          -j DSCP --set-dscp-class AF41
 	ipt -p icmp --icmp-type echo-request -j DSCP --set-dscp-class AF42
 	ipt -p icmp --icmp-type echo-reply   -j DSCP --set-dscp-class AF42
-	ipt -p icmp                          -j DSCP --set-dscp-class AF41
 }
 
 qos_stop () {
