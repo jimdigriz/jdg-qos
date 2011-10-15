@@ -161,7 +161,7 @@ qos_rules () {
 	tc qdisc add dev $IFACE       parent 10:2 handle  200: gred \
 		setup DPs 12 default 11 grio
 	MAX=$((($URATE*1000)/(8*10)))
-	MIN=$(($MAX/2))
+	MIN=$(($MAX/3))
 	LIMIT=$((8*$MAX))
 	BURST=$(((2*$MIN+$MAX)/(3*1000)))
 	tc qdisc add dev $IFACE       parent 10:3 handle  300: red \
@@ -182,7 +182,7 @@ qos_rules () {
 	tc qdisc add dev ifb0         parent 10:2 handle  200: gred \
 		setup DPs 12 default 11 grio
 	MAX=$((($DRATE*1000)/(8*10)))
-	MIN=$(($MAX/2))
+	MIN=$(($MAX/3))
 	LIMIT=$((8*$MAX))
 	BURST=$(((2*$MIN+$MAX)/(3*1000)))
 	tc qdisc add dev ifb0         parent 10:3 handle  300: red \
@@ -218,21 +218,21 @@ qos_rules () {
 			probability $P bandwidth ${DRATE}kbit prio $(($I+7))
 	done
 
-	tc filter add dev $IFACE parent ffff: protocol all \
+	tc filter add dev $IFACE parent ffff: protocol all prio 1 \
 		basic action mirred egress redirect dev ifb0
 
-	tc filter add dev $IFACE parent    1: protocol all \
+	tc filter add dev $IFACE parent    1: protocol all prio 1 \
 		tcindex mask 0xfc shift 2
-	tc filter add dev $IFACE parent   10: protocol all \
+	tc filter add dev $IFACE parent   10: protocol all prio 1 \
 		handle 0x2e tcindex classid 10:1
-	tc filter add dev $IFACE parent   10: protocol all \
+	tc filter add dev $IFACE parent   10: protocol all prio 1 \
 		handle 0x00 tcindex classid 10:3
 
-	tc filter add dev ifb0   parent    1: protocol all \
+	tc filter add dev ifb0   parent    1: protocol all prio 1 \
 		tcindex mask 0xfc shift 2
-	tc filter add dev ifb0   parent   10: protocol all \
+	tc filter add dev ifb0   parent   10: protocol all prio 1 \
 		handle 0x2e tcindex classid 10:1
-	tc filter add dev ifb0   parent   10: protocol all \
+	tc filter add dev ifb0   parent   10: protocol all prio 1 \
 		handle 0x00 tcindex classid 10:3
 }
 
