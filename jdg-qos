@@ -60,9 +60,6 @@ if [ "x$1" == "xstatus" ]; then
 	tc -s class  show dev $IFACE
 	tc -s qdisc  show dev ifb0
 	tc -s class  show dev ifb0
-	tc -s filter show dev $IFACE
-	tc -s filter show dev $IFACE parent ffff:
-	tc -s filter show dev ifb0
 	exit 0
 fi
 
