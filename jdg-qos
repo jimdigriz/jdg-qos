@@ -221,15 +221,15 @@ qos_rules () {
 	tc filter add dev $IFACE parent ffff: protocol all prio 1 \
 		basic action mirred egress redirect dev ifb0
 
-	tc filter add dev $IFACE parent    1: protocol all prio 1 \
-		tcindex mask 0xfc shift 2
+	tc filter add dev $IFACE parent   10: protocol all prio 1 \
+		tcindex mask 0xfc shift 2 pass_on
 	tc filter add dev $IFACE parent   10: protocol all prio 1 \
 		handle 0x2e tcindex classid 10:1
 	tc filter add dev $IFACE parent   10: protocol all prio 1 \
 		handle 0x00 tcindex classid 10:3
 
-	tc filter add dev ifb0   parent    1: protocol all prio 1 \
-		tcindex mask 0xfc shift 2
+	tc filter add dev ifb0   parent   10: protocol all prio 1 \
+		tcindex mask 0xfc shift 2 pass_on
 	tc filter add dev ifb0   parent   10: protocol all prio 1 \
 		handle 0x2e tcindex classid 10:1
 	tc filter add dev ifb0   parent   10: protocol all prio 1 \
