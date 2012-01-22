@@ -20,9 +20,9 @@ trap chkerr 0
 V4INT=$(ip -4 route show default | sed 's/^.* dev \([^ ]\+\).*$/\1/')
 V6INT=$(ip -6 route show default | sed 's/^.* dev \([^ ]\+\).*$/\1/')
 
-# bottleneck rate in kbps
-DRATE=$(awk '/Connection Rate/ { print $8 }' /proc/avalanche/avsar_modem_stats)
-URATE=$(awk '/Connection Rate/ { print $4 }' /proc/avalanche/avsar_modem_stats)
+# bottleneck rate in kbps (0 for auto)
+DRATE=0
+URATE=0
 
 # base latency to next hop on an idle link
 LAT=10
@@ -57,6 +57,23 @@ if [ "$1" = "status" ]; then
 	tc -d -s qdisc show dev ifb0
 	tc -d -s class show dev ifb0
 	exit 0
+fi
+
+if [ $DRATE -eq 0 ]; then
+	if [ -f /proc/avalanche/avsar_modem_stats ]; then
+		DRATE=$(awk '/Connection Rate/ { print $8 }' /proc/avalanche/avsar_modem_stats)
+	else
+		echo unable to automatically determine download rate >&2
+		exit 1
+	fi
+fi
+if [ $URATE -eq 0 ]; then
+	if [ -f /proc/avalanche/avsar_modem_stats ]; then
+		URATE=$(awk '/Connection Rate/ { print $4 }' /proc/avalanche/avsar_modem_stats)
+	else
+		echo unable to automatically determine upload rate >&2
+		exit 1
+	fi
 fi
 
 MTU=$(ip link show dev $IFACE | head -n1 | sed 's/^.* mtu \([^ ]\+\) .\+$/\1/')
