@@ -24,7 +24,12 @@ V6INT=$(ip -6 route show default | sed 's/^.* dev \([^ ]\+\).*$/\1/')
 DRATE=0
 URATE=0
 
-# base latency to next hop on an idle link
+# latency in ms to next hop on an idle link
+# ('ping' time to your ISP), to work this out
+#  - do a traceroute to 8.8.8.8
+#  - read off the first IP after your router
+#  - from your router ping that IP on an idle link
+#  - use the ping time (in ms) for LAT
 LAT=10
 
 # EF rate in kbps
