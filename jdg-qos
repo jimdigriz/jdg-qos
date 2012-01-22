@@ -60,13 +60,32 @@ TCVER=$(tc -Version | sed 's/^.*-ss\(.*\)$/\1/')
 SCHED=red
 
 _ipt () {
-	local PARAMS
+	local PARAMS LENGTH MIN MAX
+
+	# length seems to behave as if it is measuring the layer2 payload size
+	LENGTH=$(echo $@ | sed -n '/ --length / s/^.* --length \([^:]\+\):\([^ ]\+\) .*$/\1 \2/ p')
+	if [ -n "$LENGTH" ]; then
+		MIN=$(echo $LENGTH | cut -d' ' -f1)
+		MAX=$(echo $LENGTH | cut -d' ' -f2)
+	fi
 
 	if [ "$V4INT" ]; then
-		iptables  -t mangle $@
+		PARAMS=$@
+
+		if [ -n "$LENGTH" ]; then
+			PARAMS=$(echo $PARAMS | sed "s/ --length \([^:]\+\):\([^ ]\+\) / --length $(($MIN + 20)):$(($MAX + 20)) /")
+		fi
+
+		iptables  -t mangle $PARAMS
 	fi
 	if [ "$V6INT" ]; then
-		PARAMS=$(echo $@ | sed 's/icmp/icmpv6/g')
+		PARAMS=$@
+
+		PARAMS=$(echo $PARAMS | sed 's/icmp/icmpv6/g')
+		
+		if [ -n "$LENGTH" ]; then
+			PARAMS=$(echo $PARAMS | sed "s/ --length \([^:]\+\):\([^ ]\+\) / --length $(($MIN + 40)):$(($MAX + 40)) /")
+		fi
 
 		ip6tables -t mangle $PARAMS
 	fi
@@ -97,9 +116,6 @@ ipt_start () {
 ipt_rules () {
 	# FIXME we need to handle packets with DSCP already set to something
 	#	that does not map to AF/BE/EF otherwise that traffic is dropped
-
-	ipt -p tcp -m multiport --ports 1234 \
-		-j DSCP --set-dscp-class EF
 
 	# DNS
 	ipt -p udp -m multiport --ports domain -j DSCP --set-dscp-class AF31
