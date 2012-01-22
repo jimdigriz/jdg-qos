@@ -1,4 +1,10 @@
-#!/bin/sh -e
+#!/bin/sh -eu
+
+# NOTES:
+# * tc earlier than version 110629 miscomputes ewma for choke
+#	- workaround is to pass min as 'min/avpkt'
+# * tc filter for ipv6 priority does not work
+#	- workaround is to use u32 instead
 
 # uncomment to enable debugging
 set -x
@@ -11,8 +17,8 @@ trap chkerr 0
 ########## User Configurable Section ##########
 
 # bottleneck assumed to be the uplink
-V4INT=$(ip -4 route show default | sed 's/^.* dev \([^ ]\+\) .\+$/\1/')
-V6INT=$(ip -6 route show default | sed 's/^.* dev \([^ ]\+\) .\+$/\1/')
+V4INT=$(ip -4 route show default | sed 's/^.* dev \([^ ]\+\).*$/\1/')
+V6INT=$(ip -6 route show default | sed 's/^.* dev \([^ ]\+\).*$/\1/')
 
 # bottleneck rate in kbps
 DRATE=$(awk '/Connection Rate/ { print $8 }' /proc/avalanche/avsar_modem_stats)
@@ -28,23 +34,6 @@ UEF=64
 # ATM encapsulation - set to non-zero to enable
 # http://www.linuxhowtos.org/manpages/8/tc-stab.htm
 OVERHEAD=32
-
-###############################################
-
-# AF share latency avpkt prob
-TABLE="\
-AF11:10:150:0000:0.01 \
-AF12:10:150:0000:0.02 \
-AF13:10:150:0000:0.04 \
-AF21:10:100:1000:0.01 \
-AF22:10:100:1000:0.02 \
-AF23:10:100:1000:0.04 \
-AF31:10:060:0500:0.01 \
-AF32:10:060:0500:0.02 \
-AF33:10:060:0500:0.04 \
-AF41:10:020:0100:0.01 \
-AF42:10:020:0100:0.02 \
-AF43:10:020:0100:0.04"
 
 ###############################################
 
@@ -64,6 +53,11 @@ if [ "x$1" == "xstatus" ]; then
 fi
 
 MTU=$(ip link show dev $IFACE | head -n1 | sed 's/^.* mtu \([^ ]\+\) .\+$/\1/')
+
+TCVER=$(tc -Version | sed 's/^.*-ss\(.*\)$/\1/')
+#[ $(tc qdisc add choke 2> /dev/null; echo $?) -eq 1 ] && SCHED=choke || SCHED=red
+# FIXME we only support RED for now
+SCHED=red
 
 _ipt () {
 	local PARAMS
@@ -101,6 +95,9 @@ ipt_start () {
 }
 
 ipt_rules () {
+	# FIXME we need to handle packets with DSCP already set to something
+	#	that does not map to AF/BE/EF otherwise that traffic is dropped
+
 	ipt -p tcp -m multiport --ports 1234 \
 		-j DSCP --set-dscp-class EF
 
@@ -151,89 +148,68 @@ qos_rules () {
 
 	[ $OVERHEAD -ne 0 ] && STAB="stab linklayer atm overhead $OVERHEAD mtu $MTU"
 
-	# egress
-	tc qdisc add dev $IFACE       root        handle    1: dsmark \
-		indices 64 set_tc_index
-	tc qdisc add dev $IFACE $STAB parent  1:1 handle   10: prio \
-		bands 3 priomap 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
-	tc qdisc add dev $IFACE       parent 10:1 handle  100: tbf \
-		rate ${UEF}kbit burst $((2*$MTU)) latency 50ms
-	tc qdisc add dev $IFACE       parent 10:2 handle  200: gred \
-		setup DPs 12 default 11 grio
-	MAX=$((($URATE*1000)/(8*10)))
-	MIN=$(($MAX/3))
-	LIMIT=$((8*$MAX))
-	BURST=$(((2*$MIN+$MAX)/(3*1000)))
-	tc qdisc add dev $IFACE       parent 10:3 handle  300: red \
-		limit $LIMIT min $MIN max $MAX avpkt 1000 burst $BURST \
-		probability 0.04 ecn
-
 	modprobe ifb numifbs=1
 	ip link set ifb0 up
-
-	# ingress
-	tc qdisc add dev $IFACE       ingress     handle ffff:
-	tc qdisc add dev ifb0         root        handle    1: dsmark \
-		indices 64 set_tc_index
-	tc qdisc add dev ifb0   $STAB parent  1:1 handle   10: prio \
-		bands 3 priomap 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
-	tc qdisc add dev ifb0         parent 10:1 handle  100: tbf \
-		rate ${DEF}kbit burst $((2*$MTU)) latency 50ms
-	tc qdisc add dev ifb0         parent 10:2 handle  200: gred \
-		setup DPs 12 default 11 grio
-	MAX=$((($DRATE*1000)/(8*10)))
-	MIN=$(($MAX/3))
-	LIMIT=$((8*$MAX))
-	BURST=$(((2*$MIN+$MAX)/(3*1000)))
-	tc qdisc add dev ifb0         parent 10:3 handle  300: red \
-		limit $LIMIT min $MIN max $MAX avpkt 1000 burst $BURST \
-		probability 0.04 ecn
-
-	for ELEMENT in $TABLE; do
-		E=$(echo $ELEMENT | cut -d: -f 1); E=${E#AF}
-		C=${E%?}; D=${E#?}; I=$((12-3*$C+$D))
-
-		S=$(echo $ELEMENT | cut -d: -f 2 | sed 's/^0\+//')
-		L=$(($(echo $ELEMENT | cut -d: -f 3 | sed 's/^0\+//')+$LAT))
-		A=$(echo $ELEMENT | cut -d: -f 4 | sed 's/^0\+//')
-			[ -z "$A" ] && A=$MTU
-		P=$(echo $ELEMENT | cut -d: -f 5 | sed 's/^0\+//')
-
-		MAX=$((($S*$L*$URATE)/(8*10)))
-		MIN=$(($MAX/2))
-		LIMIT=$((4*$MAX))
-		BURST=$(((2*$MIN+$MAX)/(3*$A)))
-
-		tc qdisc  change dev $IFACE parent 10:2 gred DP $(($I-1)) \
-			limit $LIMIT min $MIN max $MAX avpkt $A burst $BURST \
-			probability $P bandwidth ${URATE}kbit prio $(($I+7))
-
-		MAX=$((($S*$L*$DRATE)/(8*10)))
-		MIN=$(($MAX/2))
-		LIMIT=$((4*$MAX))
-		BURST=$(((2*$MIN+$MAX)/(3*$A)))
-
-		tc qdisc  change dev ifb0   parent 10:2 gred DP $(($I-1)) \
-			limit $LIMIT min $MIN max $MAX avpkt $A burst $BURST \
-			probability $P bandwidth ${DRATE}kbit prio $(($I+7))
-	done
-
+	tc qdisc add dev $IFACE ingress handle ffff:
 	tc filter add dev $IFACE parent ffff: protocol all prio 1 \
 		basic action mirred egress redirect dev ifb0
 
-	tc filter add dev $IFACE parent   10: protocol all prio 1 \
-		tcindex mask 0xfc shift 2 pass_on
-	tc filter add dev $IFACE parent   10: protocol all prio 1 \
-		handle 0x2e tcindex classid 10:1
-	tc filter add dev $IFACE parent   10: protocol all prio 1 \
-		handle 0x00 tcindex classid 10:3
+	for INT in $IFACE ifb0
+	do
+		[ $INT = "ifb0" ] && BW=$DRATE || BW=$URATE
 
-	tc filter add dev ifb0   parent   10: protocol all prio 1 \
-		tcindex mask 0xfc shift 2 pass_on
-	tc filter add dev ifb0   parent   10: protocol all prio 1 \
-		handle 0x2e tcindex classid 10:1
-	tc filter add dev ifb0   parent   10: protocol all prio 1 \
-		handle 0x00 tcindex classid 10:3
+		tc qdisc add dev $INT $STAB root       handle  1: prio \
+			bands 3 priomap 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+		tc qdisc add dev $INT       parent 1:1 handle 10: tbf \
+			rate ${UEF}kbit burst $((2*$MTU)) latency $(($LAT+50))ms
+		tc qdisc add dev $INT       parent 1:2 handle 20: drr
+
+		MAX=$((($BW*1000)/(8*2)))
+		MIN=$(($MAX/3))
+		LIMIT=$((8*$MAX))
+		BURST=$(((2*$MIN+$MAX)/(3*1000)))
+		[ $SCHED = "choke" -a $TCVER -le 110629 ] \
+			&& MINVAR=$(($MIN/1000)) || MINVAR=$MIN
+		tc qdisc add dev $INT       parent 1:3 handle  30: $SCHED \
+			limit $LIMIT min $MINVAR max $MAX avpkt 1000 burst $BURST \
+			bandwidth $BW probability 0.04 ecn
+
+		tc filter add dev $INT protocol ip   prio 1 \
+			u32 match ip  tos      0x2e 0xfc classid 1:1
+		tc filter add dev $INT protocol ipv6 prio 2 \
+			u32 match u32 0x02e00000 0x0fc00000 at 0 classid 1:1
+
+		tc filter add dev $INT protocol ip   prio 1 \
+			u32 match ip tos       0x00 0xfc classid 1:3
+		tc filter add dev $INT protocol ipv6 prio 2 \
+			u32 match u32 0x00000000 0x0fc00000 at 0 classid 1:3
+
+		for QUEUE in	$(seq 10 2 14) $(seq 18 2 22) \
+				$(seq 26 2 30) $(seq 34 2 38); do
+			tc class  add dev $INT parent 20: classid 20:$QUEUE drr \
+				quantum $MTU
+
+			PROB=0.0$((($QUEUE % 8)/3 + ($QUEUE % 8)/3))
+			[ $PROB = "0.00" ] && PROB=0.01
+			AVPKT=$((500 * ($QUEUE % 8)/2))
+			BURST=$(((2*$MIN+$MAX)/(3*AVPKT)))
+			[ $SCHED = "choke" -a $TCVER -le 110629 ] \
+				&& MINVAR=$(($MIN/$AVPKT)) || MINVAR=$MIN
+			tc qdisc  add dev $INT parent 20:$QUEUE $SCHED \
+				limit $LIMIT min $MINVAR max $MAX \
+				avpkt $AVPKT burst $BURST bandwidth $BW \
+				probability $PROB ecn
+
+			tc filter add dev $INT parent 20: protocol ip   prio 1 \
+				u32 match ip tos $(printf 0x%x $(($QUEUE*4))) 0xfc \
+				classid 20:$QUEUE
+			tc filter add dev $INT parent 20: protocol ipv6 prio 2 \
+				u32 match u32 \
+					$(printf 0x0%x00000 $(($QUEUE*4))) \
+					0x0fc00000 at 0 \
+				classid 20:$QUEUE
+		done
+	done
 }
 
 qos_stop
