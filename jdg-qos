@@ -181,7 +181,7 @@ ipt_rules () {
 			--connbytes-dir both --connbytes-mode bytes \
 		-j DSCP --set-dscp-class AF22
 
-	# SSH an Telnet
+	# SSH and Telnet
 	ipt -p tcp -m multiport --ports ssh,telnet \
 		-j DSCP --set-dscp-class AF32
 	ipt -p tcp -m multiport --ports ssh \
