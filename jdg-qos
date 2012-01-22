@@ -7,7 +7,7 @@
 #	- workaround is to use u32 instead
 
 # uncomment to enable debugging
-set -x
+#set -x
 
 chkerr () {
 	[ $? -ne 0 ] && echo error, please enable debugging and report
@@ -113,9 +113,32 @@ ipt_start () {
 	_ipt -A PREROUTING -j jdg-qos
 }
 
+# when editing these rules, all DSCP actions are fallthrough (like LOG)
+# to the final DSCP marking is what you get having evaluated all the rules
+#
+# priority summary (packets are dequeued EF->AF->BE only when prior queue is empty):
+#  * EF - leased line like (UEF/DEF speed)
+#  * AF - http://en.wikipedia.org/wiki/Differentiated_services#Assured_Forwarding_.28AF.29_PHB_group
+#	- in decending order of priority: AF[4->1]1 -> AF[4->1]2 -> AF[4->1]3
+#  * BE - everything else
+#
 ipt_rules () {
-	# FIXME we need to handle packets with DSCP already set to something
-	#	that does not map to AF/BE/EF otherwise that traffic is dropped
+	# start with some sensible defaults
+	ipt -m dscp --dscp-class CS0       -j DSCP --set-dscp-class BE
+	ipt -m dscp --dscp-class CS1       -j DSCP --set-dscp-class AF12
+	ipt -m dscp --dscp-class CS2       -j DSCP --set-dscp-class AF22
+	ipt -m dscp --dscp-class CS3       -j DSCP --set-dscp-class AF32
+	ipt -m dscp --dscp-class CS4       -j DSCP --set-dscp-class AF42
+	ipt -m dscp --dscp-class CS5       -j DSCP --set-dscp-class EF
+	ipt -m dscp --dscp-class CS6       -j DSCP --set-dscp-class AF41
+	ipt -m dscp --dscp-class CS7       -j DSCP --set-dscp-class AF41
+	ipt -m tos  --tos        0x00      -j DSCP --set-dscp-class BE
+	ipt -m tos  --tos        0x02      -j DSCP --set-dscp-class AF13
+	ipt -m tos  --tos        0x04      -j DSCP --set-dscp-class BE
+	ipt -m tos  --tos        0x06      -j DSCP --set-dscp-class BE
+	ipt -m tos  --tos        0x08/0x08 -j DSCP --set-dscp-class AF12
+	ipt -m tos  --tos        0x10/0x10 -j DSCP --set-dscp-class AF32
+	ipt -m tos  --tos        0x18/0x18 -j DSCP --set-dscp-class AF22
 
 	# DNS
 	ipt -p udp -m multiport --ports domain -j DSCP --set-dscp-class AF31
@@ -175,11 +198,11 @@ qos_rules () {
 		[ $INT = "ifb0" ] && BW=$DRATE || BW=$URATE
 
 		tc qdisc add dev $INT $STAB root        handle   1: tbf \
-			rate $(($BW/100*95))kbit burst $(($MTU*4)) latency $LAT
+			rate $(($BW/100*95))kbit burst $(($MTU*16)) latency ${LAT}ms
 		tc qdisc add dev $INT       parent  1:  handle  10: prio \
 			bands 3 priomap 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
 		tc qdisc add dev $INT       parent 10:1 handle 100: tbf \
-			rate ${UEF}kbit burst $((2*$MTU)) latency $(($LAT+50))ms
+			rate ${UEF}kbit burst $(($MTU*16)) latency $(($LAT+50))ms
 		tc qdisc add dev $INT       parent 10:2 handle 200: drr
 
 		MAX=$((($BW*1000)/(8*2)))
