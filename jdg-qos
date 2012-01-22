@@ -52,10 +52,10 @@ fi
 [ "$V4INT" ] && IFACE=$V4INT || IFACE=$V6INT
 
 if [ "$1" = "status" ]; then
-	tc -s qdisc  show dev $IFACE
-	tc -s class  show dev $IFACE
-	tc -s qdisc  show dev ifb0
-	tc -s class  show dev ifb0
+	tc -d -s qdisc show dev $IFACE
+	tc -d -s class show dev $IFACE
+	tc -d -s qdisc show dev ifb0
+	tc -d -s class show dev ifb0
 	exit 0
 fi
 
