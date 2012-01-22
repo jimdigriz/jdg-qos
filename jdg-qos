@@ -175,9 +175,9 @@ qos_rules () {
 			bandwidth $BW probability 0.04 ecn
 
 		tc filter add dev $INT protocol ip   prio 1 \
-			u32 match ip  tos      0x2e 0xfc classid 1:1
+			u32 match ip  tos      0xb8 0xfc classid 1:1
 		tc filter add dev $INT protocol ipv6 prio 2 \
-			u32 match u32 0x02e00000 0x0fc00000 at 0 classid 1:1
+			u32 match u32 0x0b800000 0x0fc00000 at 0 classid 1:1
 
 		tc filter add dev $INT protocol ip   prio 1 \
 			u32 match ip tos       0x00 0xfc classid 1:3
