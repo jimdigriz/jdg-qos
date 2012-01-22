@@ -10,7 +10,7 @@
 #set -x
 
 chkerr () {
-	[ $? -ne 0 ] && echo error, please enable debugging and report
+	[ $? -ne 0 ] && echo error, please enable debugging and report >&2
 }
 trap chkerr 0
 
@@ -37,14 +37,21 @@ OVERHEAD=32
 
 ###############################################
 
+if [ $# -eq 0 ]; then
+	cat <<EOF >&2
+Usage: $(basename $0) { start | stop | status }
+EOF
+	exit 0
+fi
+
 if [ -z "$V4INT" -a -z "$V6INT" ]; then
-	echo must have at least an v4 or v6 interface defined
-	exit 1
+	echo must have at least an v4 or v6 interface defined >&2
+	exit 0
 fi
 # preference for v4 as v6 might be a tunnel
 [ "$V4INT" ] && IFACE=$V4INT || IFACE=$V6INT
 
-if [ "x$1" == "xstatus" ]; then
+if [ "$1" = "status" ]; then
 	tc -s qdisc  show dev $IFACE
 	tc -s class  show dev $IFACE
 	tc -s qdisc  show dev ifb0
