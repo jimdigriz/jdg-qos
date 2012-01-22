@@ -114,7 +114,7 @@ ipt_start () {
 }
 
 # when editing these rules, all DSCP actions are fallthrough (like LOG)
-# to the final DSCP marking is what you get having evaluated all the rules
+# so the final DSCP marking is what you get having evaluated all the rules
 #
 # priority summary (packets are dequeued EF->AF->BE only when prior queue is empty):
 #  * EF - leased line like (UEF/DEF speed)
