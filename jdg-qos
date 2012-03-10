@@ -65,20 +65,23 @@ if [ "$1" = "status" ]; then
 fi
 
 if [ $DRATE -eq 0 ]; then
+	# ti avsar
 	if [ -f /proc/avalanche/avsar_modem_stats ]; then
 		DRATE=$(awk '/Connection Rate/ { print $8 }' /proc/avalanche/avsar_modem_stats)
+		URATE=$(awk '/Connection Rate/ { print $4 }' /proc/avalanche/avsar_modem_stats)
+	# alcatel speedtouch
+	elif [ -d /sys/class/atm/speedtch0 -a -n "$(dmesg | grep -m 1 ': ADSL line is up (')" ]; then
+		LINE=$(dmesg | grep ': ADSL line is up (' | tail -n1 | sed 's~^.*(\([^ ]\+\).*| \([^ ]\+\).*$~\1:\2~')
+		DRATE=$(echo $LINE | cut -d: -f1)
+		URATE=$(echo $LINE | cut -d: -f2)
 	else
 		echo unable to automatically determine download rate >&2
 		exit 1
 	fi
 fi
 if [ $URATE -eq 0 ]; then
-	if [ -f /proc/avalanche/avsar_modem_stats ]; then
-		URATE=$(awk '/Connection Rate/ { print $4 }' /proc/avalanche/avsar_modem_stats)
-	else
-		echo unable to automatically determine upload rate >&2
-		exit 1
-	fi
+	echo unable to automatically determine upload rate >&2
+	exit 1
 fi
 
 MTU=$(ip link show dev $IFACE | head -n1 | sed 's/^.* mtu \([^ ]\+\) .\+$/\1/')
