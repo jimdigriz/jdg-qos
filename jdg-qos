@@ -6,9 +6,6 @@
 # * tc filter for ipv6 priority does not work
 #	- workaround is to use u32 instead
 
-# uncomment to enable debugging
-#set -x
-
 chkerr () {
 	[ $? -ne 0 ] && echo error, please enable debugging and report >&2
 }
@@ -18,6 +15,9 @@ if [ -f /etc/default/jdg-qos ]; then
 	. /etc/default/jdg-qos
 else
 	cat <<'EOF' > /etc/default/jdg-qos
+# enable debug (1), disable debug (0)
+DEBUG=0
+
 # bottleneck assumed to be the uplink
 V4INT=$(ip -4 route show default | sed 's/^.* dev \([^ ]\+\).*$/\1/')
 V6INT=$(ip -6 route show default | sed 's/^.* dev \([^ ]\+\).*$/\1/')
@@ -45,6 +45,11 @@ EOF
 	chmod 664 /etc/default/jdg-qos
 	echo first run detected, please edit /etc/default/jdg-qos >&2
 	exit 0
+fi
+
+if [ $DEBUG -eq 1 ]; then
+	set -x
+	. /etc/default/jdg-qos
 fi
 
 if ! [ $# -eq 1 -o "$1" = "start" \
