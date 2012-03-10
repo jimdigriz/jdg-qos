@@ -295,12 +295,12 @@ qos_rules () {
 			bandwidth $BW probability 0.04 ecn
 
 		tc filter add dev $INT parent 10: protocol ip   prio 1 \
-			u32 match ip tos 0xb8 0xfc               classid 10:1
+			u32 match ip tos 0xb8 0xfc       classid 10:1
 		tc filter add dev $INT parent 10: protocol ipv6 prio 2 \
 			u32 match u16 0x0b80 0x0fc0 at 0 classid 10:1
 
 		tc filter add dev $INT parent 10: protocol ip   prio 1 \
-			u32 match ip tos 0x00 0xfc               classid 10:3
+			u32 match ip tos 0x00 0xfc       classid 10:3
 		tc filter add dev $INT parent 10: protocol ipv6 prio 2 \
 			u32 match u16 0x0000 0x0fc0 at 0 classid 10:3
 
