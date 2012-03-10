@@ -42,16 +42,18 @@ OVERHEAD=32
 
 ###############################################
 
-if [ $# -eq 0 ]; then
+if ! [ $# -eq 1 -o "$1" = "start" \
+		-o "$1" = "stop" \
+		-o "$1" = "status" ]; then
 	cat <<EOF >&2
 Usage: $(basename $0) { start | stop | status }
 EOF
-	exit 0
+	exit 1
 fi
 
 if [ -z "$V4INT" -a -z "$V6INT" ]; then
 	echo must have at least an v4 or v6 interface defined >&2
-	exit 0
+	exit 1
 fi
 # preference for v4 as v6 might be a tunnel
 [ "$V4INT" ] && IFACE=$V4INT || IFACE=$V6INT
@@ -316,7 +318,7 @@ qos_rules () {
 
 qos_stop
 ipt_stop
-[ "x$1" = "xstop" ] && exit 0
+[ "$1" = "stop" ] && exit 0
 ipt_init
 ipt_rules
 qos_rules
