@@ -34,7 +34,7 @@ URATE=0
 #  - use the ping time (in ms) for LAT
 LAT=50
 
-# EF rate in kbps
+# EF rate in kbps (min: 64kbps)
 DEF=64
 UEF=64
 
@@ -262,14 +262,21 @@ qos_rules () {
 
 	for INT in $IFACE ifb0
 	do
-		[ $INT = "ifb0" ] && BW=$DRATE || BW=$URATE
+		if [ $INT = "ifb0" ]; then
+			BW=$DRATE
+			EF=$DEF
+		else
+			BW=$URATE
+			EF=$UEF
+		fi
+		[ $EF -lt 64 ] && EF=64
 
 		tc qdisc add dev $INT $STAB root        handle   1: tbf \
 			rate $(($BW/100*95))kbit burst $(($MTU*16)) latency ${LAT}ms
 		tc qdisc add dev $INT       parent  1:  handle  10: prio \
 			bands 3 priomap 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
 		tc qdisc add dev $INT       parent 10:1 handle 100: tbf \
-			rate ${UEF}kbit burst $(($MTU*16)) latency $(($LAT+50))ms
+			rate ${EF}kbit burst $(($MTU*16)) latency $(($LAT+50))ms
 		tc qdisc add dev $INT       parent 10:2 handle 200: drr
 
 		MAX=$((($BW*1000)/(8*2)))
