@@ -14,8 +14,10 @@ chkerr () {
 }
 trap chkerr 0
 
-########## User Configurable Section ##########
-
+if [ -f /etc/default/jdg-qos ]; then
+	. /etc/default/jdg-qos
+else
+	cat <<'EOF' > /etc/default/jdg-qos
 # bottleneck assumed to be the uplink
 V4INT=$(ip -4 route show default | sed 's/^.* dev \([^ ]\+\).*$/\1/')
 V6INT=$(ip -6 route show default | sed 's/^.* dev \([^ ]\+\).*$/\1/')
@@ -30,7 +32,7 @@ URATE=0
 #  - read off the first IP after your router
 #  - from your router ping that IP on an idle link
 #  - use the ping time (in ms) for LAT
-LAT=10
+LAT=50
 
 # EF rate in kbps
 DEF=64
@@ -38,9 +40,12 @@ UEF=64
 
 # ATM encapsulation - set to non-zero to enable
 # http://www.linuxhowtos.org/manpages/8/tc-stab.htm
-OVERHEAD=32
-
-###############################################
+OVERHEAD=0
+EOF
+	chmod 664 /etc/default/jdg-qos
+	echo first run detected, please edit /etc/default/jdg-qos >&2
+	exit 0
+fi
 
 if ! [ $# -eq 1 -o "$1" = "start" \
 		-o "$1" = "stop" \
@@ -48,7 +53,7 @@ if ! [ $# -eq 1 -o "$1" = "start" \
 	cat <<EOF >&2
 Usage: $(basename $0) { start | stop | status }
 EOF
-	exit 1
+	exit 0
 fi
 
 if [ -z "$V4INT" -a -z "$V6INT" ]; then
