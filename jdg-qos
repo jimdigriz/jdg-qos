@@ -52,7 +52,7 @@ if [ $DEBUG -eq 1 ]; then
 	. /etc/default/jdg-qos
 fi
 
-if ! [ $# -eq 1 -o "$1" = "start" \
+if ! [ $# -eq 1 -a "$1" = "start" \
 		-o "$1" = "stop" \
 		-o "$1" = "status" ]; then
 	cat <<EOF >&2
