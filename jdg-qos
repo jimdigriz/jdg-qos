@@ -143,6 +143,7 @@ ipt_stop () {
 	sysctl -w net.netfilter.nf_conntrack_acct=0 > /dev/null
 
 	_ipt -D PREROUTING -j jdg-qos 2> /dev/null || true
+	_ipt -D OUTPUT     -j jdg-qos 2> /dev/null || true
 	_ipt -F jdg-qos               2> /dev/null || true
 	_ipt -X jdg-qos               2> /dev/null || true
 	_ipt -F jdg-qos-defaults      2> /dev/null || true
@@ -197,6 +198,7 @@ ipt_start () {
 	sysctl -w net.netfilter.nf_conntrack_acct=1 > /dev/null
 
 	_ipt -A PREROUTING -j jdg-qos
+	_ipt -A OUTPUT     -j jdg-qos
 }
 
 # when editing these rules, all DSCP actions are fallthrough (like LOG)
