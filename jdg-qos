@@ -133,10 +133,52 @@ ipt_stop () {
 	_ipt -D PREROUTING -j jdg-qos 2> /dev/null || true
 	_ipt -F jdg-qos               2> /dev/null || true
 	_ipt -X jdg-qos               2> /dev/null || true
+	_ipt -F jdg-qos-defaults      2> /dev/null || true
+	_ipt -X jdg-qos-defaults      2> /dev/null || true
 }
 
 ipt_init () {
 	_ipt -N jdg-qos
+
+	# prime defaults chain
+	_ipt -N jdg-qos-defaults
+	_ipt -A jdg-qos-defaults -m dscp --dscp-class EF -j RETURN
+	for A in $(seq 1 4); do
+		for B in $(seq 1 3); do
+			_ipt -A jdg-qos-defaults -m dscp --dscp-class AF${A}${B} -j RETURN
+		done
+	done
+
+	#_ipt -A jdg-qos-defaults -m dscp --dscp-class CS0 \
+	#	-j DSCP --set-dscp-class BE
+	_ipt -A jdg-qos-defaults -m dscp --dscp-class CS1 \
+		-j DSCP --set-dscp-class AF12
+	_ipt -A jdg-qos-defaults -m dscp --dscp-class CS2 \
+		-j DSCP --set-dscp-class AF22
+	_ipt -A jdg-qos-defaults -m dscp --dscp-class CS3 \
+		-j DSCP --set-dscp-class AF32
+	_ipt -A jdg-qos-defaults -m dscp --dscp-class CS4 \
+		-j DSCP --set-dscp-class AF42
+	_ipt -A jdg-qos-defaults -m dscp --dscp-class CS5 \
+		-j DSCP --set-dscp-class EF
+	_ipt -A jdg-qos-defaults -m dscp --dscp-class CS6 \
+		-j DSCP --set-dscp-class AF41
+	_ipt -A jdg-qos-defaults -m dscp --dscp-class CS7 \
+		-j DSCP --set-dscp-class AF41
+	#_ipt -A jdg-qos-defaults -m tos  --tos 0x00 \
+	#	-j DSCP --set-dscp-class BE
+	_ipt -A jdg-qos-defaults -m tos  --tos 0x02 \
+		-j DSCP --set-dscp-class AF13
+	_ipt -A jdg-qos-defaults -m tos  --tos 0x04 \
+		-j DSCP --set-dscp-class BE
+	_ipt -A jdg-qos-defaults -m tos  --tos 0x06 \
+		-j DSCP --set-dscp-class BE
+	_ipt -A jdg-qos-defaults -m tos  --tos 0x08/0x08 \
+		-j DSCP --set-dscp-class AF12
+	_ipt -A jdg-qos-defaults -m tos  --tos 0x10/0x10 \
+		-j DSCP --set-dscp-class AF32
+	_ipt -A jdg-qos-defaults -m tos  --tos 0x18/0x18 \
+		-j DSCP --set-dscp-class AF22
 }
 
 ipt_start () {
@@ -155,23 +197,6 @@ ipt_start () {
 #  * BE - everything else
 #
 ipt_rules () {
-	# start with some sensible defaults
-	ipt -m dscp --dscp-class CS0       -j DSCP --set-dscp-class BE
-	ipt -m dscp --dscp-class CS1       -j DSCP --set-dscp-class AF12
-	ipt -m dscp --dscp-class CS2       -j DSCP --set-dscp-class AF22
-	ipt -m dscp --dscp-class CS3       -j DSCP --set-dscp-class AF32
-	ipt -m dscp --dscp-class CS4       -j DSCP --set-dscp-class AF42
-	ipt -m dscp --dscp-class CS5       -j DSCP --set-dscp-class EF
-	ipt -m dscp --dscp-class CS6       -j DSCP --set-dscp-class AF41
-	ipt -m dscp --dscp-class CS7       -j DSCP --set-dscp-class AF41
-	ipt -m tos  --tos        0x00      -j DSCP --set-dscp-class BE
-	ipt -m tos  --tos        0x02      -j DSCP --set-dscp-class AF13
-	ipt -m tos  --tos        0x04      -j DSCP --set-dscp-class BE
-	ipt -m tos  --tos        0x06      -j DSCP --set-dscp-class BE
-	ipt -m tos  --tos        0x08/0x08 -j DSCP --set-dscp-class AF12
-	ipt -m tos  --tos        0x10/0x10 -j DSCP --set-dscp-class AF32
-	ipt -m tos  --tos        0x18/0x18 -j DSCP --set-dscp-class AF22
-
 	# DNS
 	ipt -p udp -m multiport --ports domain -j DSCP --set-dscp-class AF31
 	ipt -p tcp -m multiport --ports domain -j DSCP --set-dscp-class AF31
@@ -202,6 +227,9 @@ ipt_rules () {
 	ipt -p tcp   --tcp-flags SYN,ACK,FIN,RST ACK \
 		-m length --length 32:40 \
 		-j DSCP --set-dscp-class AF42
+
+	# set some sensible defaults if possible
+	ipt -m dscp ! --dscp-class BE -j jdg-qos-defaults
 }
 
 qos_stop () {
