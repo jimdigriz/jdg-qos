@@ -214,7 +214,7 @@ qos_stop () {
 qos_rules () {
 	local STAB
 
-	[ $OVERHEAD -ne 0 ] && STAB="stab linklayer atm overhead $OVERHEAD mtu $MTU"
+	[ $OVERHEAD -ne 0 ] && STAB="stab linklayer atm overhead $OVERHEAD mtu $MTU" || STAB=""
 
 	modprobe ifb numifbs=1
 	ip link set ifb0 up
