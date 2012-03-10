@@ -297,12 +297,12 @@ qos_rules () {
 		tc filter add dev $INT parent 10: protocol ip   prio 1 \
 			u32 match ip tos 0xb8 0xfc               classid 10:1
 		tc filter add dev $INT parent 10: protocol ipv6 prio 2 \
-			u32 match u32 0x0b800000 0x0fc00000 at 0 classid 10:1
+			u32 match u16 0x0b80 0x0fc0 at 0 classid 10:1
 
 		tc filter add dev $INT parent 10: protocol ip   prio 1 \
 			u32 match ip tos 0x00 0xfc               classid 10:3
 		tc filter add dev $INT parent 10: protocol ipv6 prio 2 \
-			u32 match u32 0x00000000 0x0fc00000 at 0 classid 10:3
+			u32 match u16 0x0000 0x0fc0 at 0 classid 10:3
 
 		# TODO to change to four PRIO with three RED in each off DRR
 		for QUEUE in	$(seq 10 2 14) $(seq 18 2 22) \
@@ -325,9 +325,9 @@ qos_rules () {
 				u32 match ip tos $(printf 0x%x $(($QUEUE*4))) 0xfc \
 				classid 200:$QUEUE
 			tc filter add dev $INT parent 200: protocol ipv6 prio 2 \
-				u32 match u32 \
-					$(printf 0x0%x00000 $(($QUEUE*4))) \
-					0x0fc00000 at 0 \
+				u32 match u16 \
+					$(printf 0x0%x0 $(($QUEUE*4))) \
+					0x0fc0 at 0 \
 				classid 200:$QUEUE
 		done
 	done
