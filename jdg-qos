@@ -66,7 +66,7 @@ if [ -z "$V4INT" -a -z "$V6INT" ]; then
 	exit 1
 fi
 # preference for v4 as v6 might be a tunnel
-[ "$V4INT" ] && IFACE=$V4INT || IFACE=$V6INT
+[ -n "$V4INT" ] && IFACE=$V4INT || IFACE=$V6INT
 
 if [ "$1" = "status" ]; then
 	tc -d -s qdisc show dev $IFACE
@@ -113,7 +113,7 @@ _ipt () {
 		MAX=$(echo $LENGTH | cut -d' ' -f2)
 	fi
 
-	if [ "$V4INT" ]; then
+	if [ -n "$V4INT" ]; then
 		PARAMS=$@
 
 		if [ -n "$LENGTH" ]; then
@@ -122,7 +122,7 @@ _ipt () {
 
 		iptables  -t mangle $PARAMS
 	fi
-	if [ "$V6INT" ]; then
+	if [ -n "$V6INT" ]; then
 		PARAMS=$@
 
 		PARAMS=$(echo $PARAMS | sed 's/icmp/icmpv6/g')
